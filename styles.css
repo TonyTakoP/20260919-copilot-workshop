@@ -261,9 +261,14 @@ body {
 
 .empty-state {
   margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  background: var(--item-bg);
   text-align: center;
   color: var(--empty-color);
   font-size: 0.98rem;
+  line-height: 1.5;
   min-height: 28px;
 }
 

@@ -99,11 +99,11 @@ function renderTodos() {
     emptyState.classList.remove('hidden');
 
     if (activeFilter === 'active') {
-      emptyState.textContent = '目前沒有未完成的待辦事項';
+      emptyState.textContent = '目前沒有未完成的待辦事項。這些項目只是被篩選條件過濾掉，沒有被刪除。';
     } else if (activeFilter === 'completed') {
-      emptyState.textContent = '目前沒有已完成的待辦事項';
+      emptyState.textContent = '目前沒有已完成的待辦事項。這些項目只是被篩選條件過濾掉，沒有被刪除。';
     } else {
-      emptyState.textContent = '沒有符合條件的待辦事項';
+      emptyState.textContent = '沒有符合條件的待辦事項。';
     }
     return;
   }
