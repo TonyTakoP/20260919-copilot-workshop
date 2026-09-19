@@ -1,5 +1,6 @@
 // 待辦清單資料的儲存鍵值
 const STORAGE_KEY = 'todo-list-items';
+const THEME_STORAGE_KEY = 'todo-theme-preference';
 
 // 取得頁面中的 DOM 節點
 const todoForm = document.getElementById('todo-form');
@@ -7,6 +8,12 @@ const todoInput = document.getElementById('todo-input');
 const todoList = document.getElementById('todo-list');
 const emptyState = document.getElementById('empty-state');
 const remainingCount = document.getElementById('remaining-count');
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = themeToggle.querySelector('.theme-icon');
+const themeText = themeToggle.querySelector('.theme-text');
+const filterButtons = document.querySelectorAll('.filter-btn');
+
+let activeFilter = 'all';
 
 // 從 localStorage 讀取資料，若資料不存在則回傳空陣列
 function loadTodos() {
@@ -24,8 +31,50 @@ function saveTodos(todos) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
 
+// 取得預設主題：若使用者有存過偏好，直接使用；否則依照作業系統設定
+function getPreferredTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    return savedTheme;
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+// 設定 html/body 的資料屬性，並更新按鈕顯示文字
+function applyTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+
+  const isDarkMode = theme === 'dark';
+  themeIcon.textContent = isDarkMode ? '☀️' : '🌙';
+  themeText.textContent = isDarkMode ? '淺色模式' : '深色模式';
+  themeToggle.setAttribute('aria-label', isDarkMode ? '切換至淺色模式' : '切換至深色模式');
+}
+
+// 切換深色模式並持久化
+function toggleTheme() {
+  const currentTheme = document.body.getAttribute('data-theme') || 'light';
+  const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+  localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  applyTheme(nextTheme);
+}
+
 // 讀取目前待辦清單資料
 let todos = loadTodos();
+
+// 依照目前篩選條件回傳資料
+function getFilteredTodos() {
+  switch (activeFilter) {
+    case 'active':
+      return todos.filter((todo) => !todo.done);
+    case 'completed':
+      return todos.filter((todo) => todo.done);
+    default:
+      return todos;
+  }
+}
 
 // 重新渲染清單與統計資訊
 function renderTodos() {
@@ -34,10 +83,28 @@ function renderTodos() {
   const remaining = todos.filter((todo) => !todo.done).length;
   remainingCount.textContent = `未完成: ${remaining} 項`;
 
-  // 若沒有待辦事項，顯示提示文字並隱藏列表
+  const filteredTodos = getFilteredTodos();
+
+  // 若整體沒有待辦事項，顯示總體提示文字
   if (todos.length === 0) {
     todoList.classList.add('hidden');
+    emptyState.textContent = '還沒有任何待辦事項,新增一個吧!';
     emptyState.classList.remove('hidden');
+    return;
+  }
+
+  // 若篩選後沒有符合條件的待辦事項，顯示對應提示
+  if (filteredTodos.length === 0) {
+    todoList.classList.add('hidden');
+    emptyState.classList.remove('hidden');
+
+    if (activeFilter === 'active') {
+      emptyState.textContent = '目前沒有未完成的待辦事項';
+    } else if (activeFilter === 'completed') {
+      emptyState.textContent = '目前沒有已完成的待辦事項';
+    } else {
+      emptyState.textContent = '沒有符合條件的待辦事項';
+    }
     return;
   }
 
@@ -45,7 +112,7 @@ function renderTodos() {
   emptyState.classList.add('hidden');
 
   // 建立每一筆待辦項目
-  todos.forEach((todo) => {
+  filteredTodos.forEach((todo) => {
     const item = document.createElement('li');
     item.className = `todo-item ${todo.done ? 'completed' : ''}`;
 
@@ -119,11 +186,45 @@ function deleteTodo(id) {
   renderTodos();
 }
 
+// 變更目前篩選條件
+function changeFilter(filterName) {
+  activeFilter = filterName;
+
+  filterButtons.forEach((button) => {
+    const isActive = button.dataset.filter === activeFilter;
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
+
+  renderTodos();
+}
+
 // 表單送出時新增待辦事項
 todoForm.addEventListener('submit', (event) => {
   event.preventDefault();
   addTodo();
 });
 
-// 初始載入時先渲染畫面
+// 深色模式切換按鈕事件
+themeToggle.addEventListener('click', toggleTheme);
+
+// 篩選按鈕事件
+filterButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    changeFilter(button.dataset.filter);
+  });
+});
+
+// 如果作業系統主題變更，且使用者尚未手動設定偏好，就同步更新
+const systemThemeMatcher = window.matchMedia('(prefers-color-scheme: dark)');
+systemThemeMatcher.addEventListener('change', (event) => {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+
+  if (!savedTheme) {
+    applyTheme(event.matches ? 'dark' : 'light');
+  }
+});
+
+// 初始載入時先套用主題與渲染畫面
+applyTheme(getPreferredTheme());
 renderTodos();
